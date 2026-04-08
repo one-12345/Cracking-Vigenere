@@ -24,6 +24,10 @@ class VigenereCracker {
             }
             text = text.replaceAll("[^A-Z]", ""); // Sanitizes text (in case of something weird)
             likelyKeyLengths = keyLengthFinder(text);
+            System.out.println("Likely key lengths: ");
+            for (int keyLength : likelyKeyLengths) {
+                System.out.println(keyLength);
+            }
         }
         catch (IOException e) {
             System.out.println("File does not exist: " + filePath);
@@ -75,7 +79,7 @@ class VigenereCracker {
             for (int i = 0; i < positions.size(); i++) {
                 for (int j = i + 1; j < positions.size(); j++) {
                     int gcd = gcd(positions.get(i), positions.get(j));
-                    if (gcd > 1 && !likelyKeyLengths.contains(gcd)) {
+                    if (gcd > 1 && !likelyKeyLengths.contains(gcd) && gcd <= 16) { // Only considers key lengths at most 16 due to assignment parameters
                         likelyKeyLengths.add(gcd);
                         keyLengthFrequency.put(gcd, 1); // Initialize count of how many times this key length appears
                     }
