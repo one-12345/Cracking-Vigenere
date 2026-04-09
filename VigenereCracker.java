@@ -2,7 +2,6 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
-import java.util.regex.*;
 import java.util.stream.Collectors;
 
 class VigenereCracker {
@@ -15,6 +14,7 @@ class VigenereCracker {
         Path filePath = Paths.get(args[0]);
         String text;
         ArrayList<Integer> likelyKeyLengths = new ArrayList<>();
+        HashMap<Integer, Integer> keyLengthFrequency = new HashMap<>();
 
         try {
             text = Files.readString(filePath).toUpperCase();
@@ -23,10 +23,10 @@ class VigenereCracker {
                 return;
             }
             text = text.replaceAll("[^A-Z]", ""); // Sanitizes text (in case of something weird)
-            likelyKeyLengths = keyLengthFinder(text);
+            keyLengthFrequency = keyLengthFinder(text);
             System.out.println("Likely key lengths: ");
-            for (int keyLength : likelyKeyLengths) {
-                System.out.println(keyLength);
+            for (Map.Entry<Integer, Integer> entry : keyLengthFrequency.entrySet()) {
+                System.out.println("Key length: " + entry.getKey() + ", Frequency: " + entry.getValue());
             }
         }
         catch (IOException e) {
@@ -36,55 +36,47 @@ class VigenereCracker {
         
     }
 
-    static ArrayList<Integer> keyLengthFinder(String text) {
+    static HashMap<Integer,Integer> keyLengthFinder(String text) {
         ArrayList<Integer> likelyKeyLengths = new ArrayList<>();
         HashMap<Integer, Integer> keyLengthFrequency = new HashMap<>(); // Map to count frequency of each key length in our GCD calculations
         HashMap<String, ArrayList<Integer>> bigramPositions = new HashMap<>(); // Map for all bigrams and their positions. Most common bigrams will be used.
-        Pattern pat = Pattern.compile(".."); // Pattern to find bigrams
-        Matcher mat = pat.matcher(text);
+        
 
         // Find all bigrams and differences in positions in text
-        while (mat.find()) {
-            String bigram = mat.group();
-            int pos = mat.start();
-            if (!bigramPositions.containsKey(bigram)) {
-                bigramPositions.put(bigram, new ArrayList<>());
-            }
-            else {
-                bigramPositions.get(bigram).add(pos - bigramPositions.get(bigram).get(bigramPositions.get(bigram).size() - 1)); // Store position differences for GCD calculation
-            }
+        for (int i = 0; i < text.length() - 1; i++) {
+            String bigram = text.substring(i, i + 2);
+            bigramPositions.putIfAbsent(bigram, new ArrayList<>());
+            bigramPositions.get(bigram).add(i);
         }
-
         // Sort bigrams by frequency and get the 10 most common bigrams
 
-        HashMap<HashMap<String, ArrayList<Integer>>, Integer> bigramFrequency = new HashMap<>();
-        String[] topTen = new String[10];
+        HashMap<String, Integer> bigramFrequency = new HashMap<>();
+        String[] topFour = new String[4];
         for (String bigram : bigramPositions.keySet()) {
-            bigramFrequency.put(bigramPositions, bigramPositions.get(bigram).size());
-            topTen = bigramFrequency.entrySet().stream()
-                .sorted(Map.Entry.<HashMap<String, ArrayList<Integer>>, Integer>comparingByValue().reversed())
-                .limit(10)
-                .map(Map.Entry::getKey)
-                .toArray(String[]::new);
+            bigramFrequency.put(bigram, bigramPositions.get(bigram).size());
         }
+        topFour = topFourKeys(bigramFrequency);
 
         HashMap<String, ArrayList<Integer>> frequentBigramPositions = new HashMap<>();
-        for (String bigram : topTen) {
+        for (String bigram : topFour) {
             frequentBigramPositions.put(bigram, bigramPositions.get(bigram));
         }
 
         // Uses 10 bigrams with most appearances in text to find likely key lengths w/ GCD of pairwise position differences
         for (String bigram : frequentBigramPositions.keySet()) {
             ArrayList<Integer> positions = frequentBigramPositions.get(bigram);
+
             for (int i = 0; i < positions.size(); i++) {
                 for (int j = i + 1; j < positions.size(); j++) {
-                    int gcd = gcd(positions.get(i), positions.get(j));
-                    if (gcd > 1 && !likelyKeyLengths.contains(gcd) && gcd <= 16) { // Only considers key lengths at most 16 due to assignment parameters
-                        likelyKeyLengths.add(gcd);
-                        keyLengthFrequency.put(gcd, 1); // Initialize count of how many times this key length appears
-                    }
-                    else if (gcd > 1) {
-                        keyLengthFrequency.put(gcd, keyLengthFrequency.get(gcd) + 1); // Increment count of how many times this key length appears
+                    int distance = positions.get(j) - positions.get(i);
+
+                    for (int k = 2; k <= 16; k++) {
+                        if (distance % k == 0) {
+                            keyLengthFrequency.put(
+                                k,
+                                keyLengthFrequency.getOrDefault(k, 0) + 1
+                            );
+                        }
                     }
                 }
             }
@@ -93,7 +85,8 @@ class VigenereCracker {
 
         // Returns likely key lengths sorted by frequency of appearance in position differences, but weight towards longer key lengths (since they are more likely to be correct)
         // WIP, currently just returns key lengths sorted by frequency of appearance in position differences
-        return likelyKeyLengths;
+        
+        return keyLengthFrequency;
     }
 
     static String keyFinder(String text, int keyLength) { 
@@ -158,10 +151,22 @@ class VigenereCracker {
         return key.toString();
     }
 
+    // Helper functions below:
+
+    // GCD function for finding likely key lengths
     static int gcd(int a, int b) {
         if (b == 0) {
             return a;
         }
         return gcd(b, a % b);
+    }
+
+    // Function to get the 10 most common bigrams from a list of bigrams and their positions
+    static String[] topFourKeys(HashMap<String, Integer> frequency) {
+        return frequency.entrySet().stream()
+            .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+            .map(Map.Entry::getKey)
+            .limit(4)
+            .toArray(String[]::new);
     }
 }
