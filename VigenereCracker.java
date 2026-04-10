@@ -71,7 +71,7 @@ class VigenereCracker {
                 for (int j = i + 1; j < positions.size(); j++) {
                     int distance = positions.get(j) - positions.get(i);
 
-                    for (int k = 2; k <= 16; k++) {
+                    for (int k = 1; k <= 16; k++) {
                         if (distance % k == 0) {
                             keyLengthFrequency.put(
                                 k,
