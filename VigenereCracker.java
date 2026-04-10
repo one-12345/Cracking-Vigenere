@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.nio.file.*;
-import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -13,7 +12,6 @@ class VigenereCracker {
 
         Path filePath = Paths.get(args[0]);
         String text;
-        ArrayList<Integer> likelyKeyLengths = new ArrayList<>();
         HashMap<Integer, Integer> keyLengthFrequency = new HashMap<>();
 
         try {
@@ -24,10 +22,17 @@ class VigenereCracker {
             }
             text = text.replaceAll("[^A-Z]", ""); // Sanitizes text (in case of something weird)
             keyLengthFrequency = keyLengthFinder(text);
-            System.out.println("Likely key lengths: ");
-            for (Map.Entry<Integer, Integer> entry : keyLengthFrequency.entrySet()) {
-                System.out.println("Key length: " + entry.getKey() + ", Adjusted Frequency: " + entry.getValue());
+            ArrayList<String> possibleKeys = new ArrayList<String>();
+            for (Integer keyLength : keyLengthFrequency.keySet()) {
+                possibleKeys.add(keyFinder(text,keyLength));
             }
+            String bestKey = possibleKeys.get(0);
+            for (String key : possibleKeys) {
+                if (englishSimilarity(text, key, keyLengthFrequency) > englishSimilarity(text, bestKey, keyLengthFrequency)) {
+                    bestKey = key;
+                }
+            }
+            System.out.println(bestKey);
         }
         catch (IOException e) {
             System.out.println("File does not exist: " + filePath);
@@ -37,7 +42,6 @@ class VigenereCracker {
     }
 
     static HashMap<Integer,Integer> keyLengthFinder(String text) {
-        ArrayList<Integer> likelyKeyLengths = new ArrayList<>();
         HashMap<Integer, Integer> keyLengthFrequency = new HashMap<>(); // Map to count frequency of each key length in our GCD calculations
         HashMap<String, ArrayList<Integer>> trigramPositions = new HashMap<>(); // Map for all trigrams and their positions. Most common trigrams will be used.
         
@@ -98,9 +102,9 @@ class VigenereCracker {
     }
 
     static String keyFinder(String text, int keyLength) { 
-        // E, T, A, O, I, N, S, H, R, D, L, C, U, M, W, F, G, Y, P, B, V, K, J, X, Q, Z
-        char[] common = {'E', 'T', 'A', 'O', 'I'};
-        StringBuilder key = new StringBuilder(); 
+        // common letters: E, T, A, O, I, N, S, H, R, D, L, C, U, M, W, F, G, Y, P, B, V, K, J, X, Q, Z
+        char[] common = {'E', 'T', 'A', 'O', 'I'}; // try 5 most common
+        StringBuilder key = new StringBuilder(); // can change
         
         for (int i = 0; i < keyLength; i++) {
             StringBuilder group = new StringBuilder(); 
@@ -113,7 +117,7 @@ class VigenereCracker {
                 freq[group.charAt(j) - 'A'] ++; 
             } 
             
-            int[] top = new int[5];  // try the top 5 most common letters and test those
+            int[] top = new int[5];  
             for (int t = 0; t < 5; t ++) { 
                 int maxIdx = -1; 
                 for (int k = 0; k < 26; k ++) {
@@ -125,7 +129,7 @@ class VigenereCracker {
                 freq[maxIdx] = -1; 
             } 
 
-            int bestShift = 0; 
+            int bestShift = 0; // going to see which shift matches 5 most common letters best
             double bestScore = Double.MAX_VALUE; 
 
             for (int c = 0; c < 5; c ++) {
@@ -148,7 +152,7 @@ class VigenereCracker {
                         }
                     } 
 
-                    if (score < bestScore) { // replace with best shift
+                    if (score < bestScore) { // replace current score with best shift score
                         bestScore = score; 
                         bestShift = shift; 
                     } 
@@ -157,6 +161,29 @@ class VigenereCracker {
             key.append((char) ('A' + bestShift)); 
         }
         return key.toString();
+    }
+
+    public static int englishSimilarity(String text, String key, HashMap<Integer, Integer> keyLengthFrequency) {
+        int bigramScore = 0;
+        int trigramScore = 0;
+        String decryptedText = decrypt(text, key);
+        for (int i = 0; i < decryptedText.length() - 1; i++) {
+            String bigram = decryptedText.substring(i, i + 2);
+            if (bigram.equals("TH")) bigramScore++;
+            else if (bigram.equals("HE")) bigramScore++;
+            else if (bigram.equals("IN")) bigramScore++;
+            else if (bigram.equals("ER")) bigramScore++;
+            else if (bigram.equals("AN")) bigramScore++;
+        }
+        for (int i = 0; i < decryptedText.length() - 2; i++) {
+            String trigram = decryptedText.substring(i, i + 3);
+            if (trigram.equals("THE")) trigramScore++;
+            else if (trigram.equals("AND")) trigramScore++;
+            else if (trigram.equals("ING")) trigramScore++;
+            else if (trigram.equals("HER")) trigramScore++;
+            else if (trigram.equals("HIS")) trigramScore++;
+        }
+        return bigramScore * trigramScore; // weight by frequency of key length from keyLengthFinder
     }
 
     // Helper functions below:
@@ -169,12 +196,15 @@ class VigenereCracker {
         return gcd(b, a % b);
     }
 
-    // Function to get the 10 most common trigrams from a list of trigrams and their positions
-    static String[] topFourKeys(HashMap<String, Integer> frequency) {
-        return frequency.entrySet().stream()
-            .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-            .map(Map.Entry::getKey)
-            .limit(4)
-            .toArray(String[]::new);
+    public static String decrypt(String text, String key) {
+        String sanitizedText = text.replaceAll("[^A-Z]", "");
+        StringBuilder result = new StringBuilder();
+        int shift;
+        for (int i = 0; i < sanitizedText.length(); i++) {
+            shift = key.charAt(i % key.length()) - 'A';
+            result.append((char) ('A' + (sanitizedText.charAt(i) - 'A' - shift + 26) % 26));
+        }
+        return result.toString();
     }
+
 }
