@@ -137,7 +137,7 @@ class VigenereCracker {
                     int shift = (top[c] - (common[p] - 'A') + 26) % 26;
                     int[] testFreq = new int[26];
                 
-                    for (int j = 0; j < group.length(); j ++) {
+                    for (int j = 0; j < group.length(); j ++) { // decrypt each one to check
                         int ch = group.charAt(j) - 'A';
                         int dec = (ch - shift + 26) % 26;
                         testFreq[dec] ++;
@@ -145,7 +145,7 @@ class VigenereCracker {
 
                     double score = 0;
                     int total = group.length();
-                    for (int k = 0; k < 26; k ++) {
+                    for (int k = 0; k < 26; k ++) { // score the result
                         double observed = (double) testFreq[k] / total;
                         if (k == ('E' - 'A')) {
                             score -= observed;
