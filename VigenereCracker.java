@@ -145,7 +145,7 @@ class VigenereCracker {
 
                     double score = 0;
                     int total = group.length();
-                    for (int k = 0; k < 26; k ++) {
+                    for (int k = 0; k < 26; k ++) { // score the result
                         double observed = (double) testFreq[k] / total;
                         if (k == ('E' - 'A')) {
                             score -= observed;
