@@ -4,6 +4,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 class VigenereCracker {
+    static Object[][] letterFrequency = {{'E',12.70},{'T',9.06},{'A',8.17},{'O',7.51},{'I',6.97},{'N',6.75},{'S',6.33},{'H',6.09},{'R',5.99},{'D',4.25},{'L',4.03},{'C',2.78},{'U',2.76},{'M',2.41},{'W',2.36},{'F',2.23},{'G',2.02},{'Y',1.97},{'P',1.93},{'B',1.49},{'V',0.98},{'K',0.77},{'J',0.15},{'X',0.15},{'Q',0.10},{'Z',0.07}};
+
     public static void main(String[] args) {
         if (args.length < 1) {
             System.out.println("Please enter the filename of the encrypted text as a command line argument.");
@@ -17,7 +19,8 @@ class VigenereCracker {
         try {
             text = Files.readString(filePath).toUpperCase();
             if (text.isEmpty()) {
-                System.out.println("File is empty: " + args[1]);
+                System.out.println("File is empty: " + filePath);
+                //TODO: args[1] wrong output
                 return;
             }
             text = text.replaceAll("[^A-Z]", ""); // Sanitizes text (in case of something weird)
@@ -57,11 +60,13 @@ class VigenereCracker {
         for (String trigram : trigramPositions.keySet()) {
             trigramFrequency.put(trigram, trigramPositions.get(trigram).size());
         }
+            //TODO: trigram frequency is never used
 
         HashMap<String, ArrayList<Integer>> frequentTrigramPositions = new HashMap<>();
         for (String trigram : trigramPositions.keySet()) {
             frequentTrigramPositions.put(trigram, trigramPositions.get(trigram));
         }
+        //TODO: frequentTrigramPositions is just a copy, not a filtered one
 
         // Uses 10 trigrams with most appearances in text to find likely key lengths w/ GCD of pairwise position differences
         for (String trigram : frequentTrigramPositions.keySet()) {
@@ -82,7 +87,9 @@ class VigenereCracker {
                 }
             }
         }
+
         // Weight frequencies by multiplying by sqrt(keylength) (b/c more gcd false positives for smaller key lengths, and by key length alone would make multiples always override their factors)
+        //TODO: hmm...instead of sqrt, how about gcd of all pairwise of pairwise trigrams?
         for (Map.Entry<Integer, Integer> entry : keyLengthFrequency.entrySet()) {
             keyLengthFrequency.put(entry.getKey(), (int) (entry.getValue() * Math.sqrt(entry.getKey())));
         }
@@ -128,10 +135,9 @@ class VigenereCracker {
                 top[t] = maxIdx; 
                 freq[maxIdx] = -1; 
             } 
-
+            //TODO: where is the standard english frequency for comparison?
             int bestShift = 0; // going to see which shift matches 5 most common letters best
             double bestScore = Double.MAX_VALUE; 
-
             for (int c = 0; c < 5; c ++) {
                 for (int p = 0; p < 5; p ++) {
                     int shift = (top[c] - (common[p] - 'A') + 26) % 26;
@@ -148,7 +154,7 @@ class VigenereCracker {
                     for (int k = 0; k < 26; k ++) { // score the result
                         double observed = (double) testFreq[k] / total;
                         if (k == ('E' - 'A')) {
-                            score -= observed;
+                            score -= observed;//TODO: only checked E
                         }
                     } 
 
@@ -183,6 +189,8 @@ class VigenereCracker {
             else if (trigram.equals("HER")) trigramScore++;
             else if (trigram.equals("HIS")) trigramScore++;
         }
+        //compare with real data
+        //additional frequency check incorporated to weight
         return bigramScore * trigramScore; // weight by frequency of key length from keyLengthFinder
     }
 
@@ -195,7 +203,8 @@ class VigenereCracker {
         }
         return gcd(b, a % b);
     }
-
+    //the results were not gcded. (all intended trigrams should be spaced by the multiple of key length)
+    //only the most frequent bi/trigrams are counted; allows a few negative cases
     public static String decrypt(String text, String key) {
         String sanitizedText = text.replaceAll("[^A-Z]", "");
         StringBuilder result = new StringBuilder();
