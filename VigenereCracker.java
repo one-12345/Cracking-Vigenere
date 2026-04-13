@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 class VigenereCracker {
     static Object[][] letterFrequency = {{'A',8.17},{'B',1.49},{'C',2.78},{'D',4.25},{'E',12.70},{'F',2.23},{'G',2.02},{'H',6.09},{'I',6.97},{'J',0.15},{'K',0.77},{'L',4.03},{'M',2.41},{'N',6.75},{'O',7.51},{'P',1.93},{'Q',0.10},{'R',5.99},{'S',6.33},{'T',9.06},{'U',2.76},{'V',0.98},{'W',2.36},{'X',0.15},{'Y',1.97},{'Z',0.07}};
     static Object[][] bigramFrequency = {{"TH",3.56},{"HE",3.07},{"IN",1.92},{"ER",2.77},{"AN",1.73},{"RE",2.41},{"ED",2.67},{"ND",1.68},{"HA",1.16},{"EN",1.44}};
-    static Object[][] trigramFrequency = {{"THE",1.81},{"AND",0.73},{"THA",0.33},{"ENT",0.42},{"INT",0.72},{"ION",0.42},{"FOR",0.34},{"tio",0.31}};
+    static Object[][] trigramFrequency = {{"THE",1.81},{"AND",0.73},{"THA",0.33},{"ENT",0.42},{"INT",0.72},{"ION",0.42},{"FOR",0.34},{"TIO",0.31}};
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -32,8 +32,6 @@ class VigenereCracker {
             }
             String bestKey = possibleKeys.get(0);
             for (String key : possibleKeys) {
-                // System.out.println(key);
-                // System.out.println(englishSimilarity(text, key));
                 if (englishSimilarity(text, key) > englishSimilarity(text, bestKey)) {
                     bestKey = key;
                 }
@@ -132,13 +130,13 @@ class VigenereCracker {
 
         // Weight frequencies by multiplying by sqrt(keylength) (b/c more gcd false positives for smaller key lengths, and by key length alone would make multiples always override their factors)
         for (Map.Entry<Integer, Integer> entry : keyLengthFrequency.entrySet()) {
-            keyLengthFrequency.put(entry.getKey(), (int) (entry.getValue() * Math.sqrt(entry.getKey())));
+            keyLengthFrequency.put(entry.getKey(), (int) (entry.getValue() * Math.cbrt(entry.getKey()) * Math.cbrt(entry.getKey())));
         }
 
         // Sort key lengths by frequency and return the top 4 most likely key lengths
         keyLengthFrequency = keyLengthFrequency.entrySet().stream()
             .sorted(Map.Entry.<Integer, Integer>comparingByValue().reversed())
-            .limit(4)
+            .limit(6)
             .collect(Collectors.toMap(
                 Map.Entry::getKey,
                 Map.Entry::getValue,
@@ -209,6 +207,12 @@ class VigenereCracker {
 
     public static double englishSimilarity(String text, String key) {
         String decryptedText = decrypt(text, key);
+
+        // Count letter frequencies in decrypted text
+        // HashMap<Character, Integer> decryptedLetterFreq = new HashMap<>();
+        // for (char c : decryptedText.toCharArray()) {
+        //     decryptedLetterFreq.put(c, decryptedLetterFreq.getOrDefault(c, 0) + 1);
+        // }
         
         // Count bigram frequencies in decrypted text
         HashMap<String, Integer> decryptedBigramFreq = new HashMap<>();
@@ -218,11 +222,21 @@ class VigenereCracker {
         }
         
         // Count trigram frequencies in decrypted text
-        HashMap<String, Integer> decryptedTrigramFreq = new HashMap<>();
-        for (int i = 0; i < decryptedText.length() - 2; i++) {
-            String trigram = decryptedText.substring(i, i + 3);
-            decryptedTrigramFreq.put(trigram, decryptedTrigramFreq.getOrDefault(trigram, 0) + 1);
-        }
+        // HashMap<String, Integer> decryptedTrigramFreq = new HashMap<>();
+        // for (int i = 0; i < decryptedText.length() - 2; i++) {
+        //     String trigram = decryptedText.substring(i, i + 3);
+        //     decryptedTrigramFreq.put(trigram, decryptedTrigramFreq.getOrDefault(trigram, 0) + 1);
+        // }
+
+        // Calculate letter score based on frequency difference squared
+        // double letterScore = 0;
+        // int totalLetters = decryptedText.length();
+        // for (Object[] letterPair : letterFrequency) {
+        //     char letter = (char) letterPair[0];
+        //     double expectedFreq = ((double) letterPair[1] / 100.0);
+        //     double observedFreq = (double) decryptedLetterFreq.getOrDefault(letter, 0) / totalLetters;
+        //     letterScore += (expectedFreq - observedFreq) * (expectedFreq - observedFreq);
+        // }
         
         // Calculate bigram score based on frequency difference squared
         double bigramScore = 0;
@@ -237,19 +251,19 @@ class VigenereCracker {
         }
         
         // Calculate trigram score based on frequency difference squared
-        double trigramScore = 0;
-        int totalTrigrams = decryptedText.length() - 2;
-        for (Object[] trigramPair : trigramFrequency) {
-            String trigram = (String) trigramPair[0];
-            if (decryptedTrigramFreq.containsKey(trigram)) {
-                double expectedFreq = ((double) trigramPair[1] / 100.0);
-                double observedFreq = (double) decryptedTrigramFreq.get(trigram) / totalTrigrams;
-                trigramScore += (expectedFreq - observedFreq) * (expectedFreq - observedFreq);
-            }
-        }
+        // double trigramScore = 0;
+        // int totalTrigrams = decryptedText.length() - 2;
+        // for (Object[] trigramPair : trigramFrequency) {
+        //     String trigram = (String) trigramPair[0];
+        //     if (decryptedTrigramFreq.containsKey(trigram)) {
+        //         double expectedFreq = ((double) trigramPair[1] / 100.0);
+        //         double observedFreq = (double) decryptedTrigramFreq.get(trigram) / totalTrigrams;
+        //         trigramScore += (expectedFreq - observedFreq) * (expectedFreq - observedFreq);
+        //     }
+        // }
         
         // Return combined score (negative because lower is better)
-        return (double) (-(bigramScore + trigramScore));
+        return (double) -(bigramScore);
     }
 
     // Helper functions below:
