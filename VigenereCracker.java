@@ -207,7 +207,7 @@ class VigenereCracker {
         return key.toString();
     }
 
-    public static int englishSimilarity(String text, String key) {
+    public static double englishSimilarity(String text, String key) {
         String decryptedText = decrypt(text, key);
         
         // Count bigram frequencies in decrypted text
@@ -249,7 +249,7 @@ class VigenereCracker {
         }
         
         // Return combined score (negative because lower is better)
-        return (int) (-(bigramScore + trigramScore) * 1000);
+        return (double) (-(bigramScore + trigramScore));
     }
 
     // Helper functions below:
